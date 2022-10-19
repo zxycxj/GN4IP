@@ -1,4 +1,4 @@
-# This is an example of building a graph U-net
+# This is an example of building a 2D CNN U-net
 
 import time
 import GN4IP
@@ -6,7 +6,7 @@ import torch
 
 tstart = time.time()
 model = GN4IP.models.buildModel(
-    type          = "gnn",
+    type          = "cnn2d",
     device        = "cpu",
     depth         = 1,
     channels_in   = 1,
@@ -15,4 +15,4 @@ model = GN4IP.models.buildModel(
 )
 GN4IP.models.parameterSummary(model)
 GN4IP.utils.printLine()
-GN4IP.utils.timeMessage(tstart, "Built a GNN!")
+GN4IP.utils.timeMessage(tstart, "Built a (2D) CNN!")
