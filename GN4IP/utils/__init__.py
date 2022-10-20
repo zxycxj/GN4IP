@@ -2,6 +2,9 @@
 
 from .message import printLine, timeMessage
 from .load import loadDataset
+from .losses import myMSELoss, myL1Loss, mySmoothL1Loss
+
+
 # from .load import loadData, loadData2, loadData3, loadWeights, loadUNET, loadGCNM
 # from .save import saveUNET, saveGCNM, saveModel, saveLosses, savePredictions
 # from .transform import graph2grid, grid2graph

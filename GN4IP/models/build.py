@@ -10,7 +10,7 @@ from GN4IP.utils.message import printLine
 
 
 # Build a model
-def buildModel(type, device="cpu", channels_in=1, channels=8, convolutions=1, depth=0, loss_function=torch.nn.MSELoss()):
+def buildModel(type, channels_in=1, channels=8, convolutions=1, depth=0, loss_function=torch.nn.MSELoss()):
 
     # Make a GNN
     if type == "gnn":
@@ -30,7 +30,6 @@ def buildModel(type, device="cpu", channels_in=1, channels=8, convolutions=1, de
     
     # Make the model parameters doubles and move to device
     model = model.double()
-    model.to(device)
     
     # Return the model
     return model
@@ -188,6 +187,7 @@ class gnnModel(torch.nn.Module):
         # Determine the device using the first key-value in the state_dict()
         dev = next(iter(self.state_dict().items()))[1].device
         return dev
+
 
 # Make a class for 2D cnn models
 class cnn2dModel(torch.nn.Module):

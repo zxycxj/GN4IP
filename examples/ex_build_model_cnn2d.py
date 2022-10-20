@@ -7,7 +7,6 @@ import torch
 tstart = time.time()
 model = GN4IP.models.buildModel(
     type          = "cnn2d",
-    device        = "cpu",
     depth         = 1,
     channels_in   = 1,
     channels      = 8,

@@ -8,6 +8,7 @@ import GN4IP.models
 # GN4IP.models.build()
 # GN4IP.models.parameterSummary()
 
+import GN4IP.experiment
 
 # import GN4IP.train
 # import GN4IP.predict
