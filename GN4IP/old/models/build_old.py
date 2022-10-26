@@ -1,6 +1,5 @@
 # Functions for creating models
 
-import GN4IP
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -9,44 +8,45 @@ from tabulate import tabulate
 
 from GN4IP.utils.message import printLine
 
-
-# Build a model
-def buildModel(type="gnn", channels_in=1, channels=8, convolutions=1, depth=0, loss_function=GN4IP.utils.myMSELoss()):
-
-    # Make a GNN
+# build a model
+def buildModel(type, device="cpu", res=False, depth=0, channels_in=1, channels=8, convolutions=1, loss_function=torch.nn.MSELoss(), activation=F.relu, threshold=False, k_size=3, last_1x1=True, knn_up=False):
+    
+    # Make a gnn model
     if type == "gnn":
-        model = gnnModel(channels_in, channels, convolutions, depth, loss_function)
+        model = gnnModel(res, depth, channels_in, channels, convolutions, loss_function, activation, threshold, last_1x1)
     
-    # Make a 2D CNN
+    # Make a cnn model (2d)
     elif type == "cnn2d":
-        model = cnn2dModel(channels_in, channels, convolutions, depth, loss_function)
+        model = cnnModel2d(res, depth, channels_in, channels, convolutions, loss_function, activation, threshold, k_size, last_1x1, knn_up)
     
-    # Make a 3D CNN
+    # Make a cnn model (3d)
     elif type == "cnn3d":
-        model = cnn3dModel(channels_in, channels, convolutions, depth, loss_function)
+        model = cnnModel3d(res, depth, channels_in, channels, convolutions, loss_function, activation, threshold, k_size, last_1x1, knn_up)
     
-    # All other types raise an error
+    # It might have some other type which is wrong
     else:
-        raise ValueError("Bad type in buildModel(). It must be 'gnn', 'cnn2d', or 'cnn3d'.")
+        raise ValueError("Wrong type in buildModel(). It must be gnn, cnn2d, or cnn3d.")
     
-    # Make the model parameters doubles and move to device
+    # Make double and move to device before returning
     model = model.double()
-    
-    # Return the model
+    model.to(device)
     return model
-
 
 # Make a class for gnn models
 class gnnModel(torch.nn.Module):
     
-    def __init__(self, channels_in, channels, convolutions, depth, loss_function):
+    def __init__(self, res, depth, channels_in, channels, convolutions, loss_function, activation, threshold, last_1x1):
         super(gnnModel, self).__init__()
         self.type          = "gnn"
+        self.res           = res
+        self.depth         = depth
         self.channels_in   = channels_in
         self.channels      = channels
         self.convolutions  = convolutions
-        self.depth         = depth
         self.loss_function = loss_function
+        self.activation    = activation
+        self.threshold     = threshold
+        self.last_1x1      = last_1x1
         
         # Create initial convolutions
         chan_in  = channels_in
@@ -140,9 +140,14 @@ class gnnModel(torch.nn.Module):
             # Convolutions
             x = self.doGCNBlock(x, edge_index, self.up_convs[i])
         
-        # Do the final convolution (remove edges)
-        edge_index = torch.empty((2,0), dtype=torch.long, device=self.get_device())
+        # Do the final convolution (if self.last_1x1 then remove graph edges)
+        if self.last_1x1:
+            edge_index = torch.empty((2,0), dtype=torch.long, device=self.get_device())
         x = self.final_conv(x, edge_index)
+        
+        # Apply a threshold to the output
+        if self.threshold:
+            x = F.threshold(x, self.threshold, self.threshold)
         
         # Return x
         return x
@@ -163,7 +168,7 @@ class gnnModel(torch.nn.Module):
         # Loop through the convolutions and apply them
         for conv in block:
             x = conv(x, edge_index)
-            x = F.relu(x)
+            x = self.activation(x)
         return x
     
     # Function for checking the cluster array
@@ -191,16 +196,22 @@ class gnnModel(torch.nn.Module):
 
 
 # Make a class for 2D cnn models
-class cnn2dModel(torch.nn.Module):
+class cnnModel2d(torch.nn.Module):
 
-    def __init__(self, channels_in, channels, convolutions, depth, loss_function):
-        super(cnn2dModel, self).__init__()
+    def __init__(self, res, depth, channels_in, channels, convolutions, loss_function, activation, threshold, k_size, last_1x1, knn_up):
+        super(cnnModel2d, self).__init__()
         self.type          = "cnn2d"
+        self.res           = res
+        self.depth         = depth
         self.channels_in   = channels_in
         self.channels      = channels
         self.convolutions  = convolutions
-        self.depth         = depth
         self.loss_function = loss_function
+        self.activation    = activation
+        self.threshold     = threshold
+        self.k_size        = k_size
+        self.last_1x1      = last_1x1
+        self.knn_up        = knn_up
         
         # Create initial convolutions
         chan_in  = channels_in
@@ -220,13 +231,19 @@ class cnn2dModel(torch.nn.Module):
         for i in range(depth):
             chan_in  = chan_out
             chan_out = chan_out//2
-            self.tr_convs.append(torch.nn.ConvTranspose2d(chan_in, chan_out, 2, stride=2))
+            if self.knn_up:
+                chan_in = chan_in + chan_out
+            else:
+                self.tr_convs.append(torch.nn.ConvTranspose2d(chan_in, chan_out, 2, stride=2))
             self.up_convs.append(self.buildCNNBlock(chan_in, chan_out))
         
         # Create the final convolution (maybe do a 1x1)
         chan_in  = channels
         chan_out = 1
-        self.final_conv = torch.nn.Conv2d(chan_in, chan_out, 1, stride=1, padding="same")
+        if self.last_1x1:
+            self.final_conv = torch.nn.Conv2d(chan_in, chan_out, 1, stride=1, padding="same")
+        else:
+            self.final_conv = torch.nn.Conv2d(chan_in, chan_out, self.k_size, stride=1, padding="same")
         
         # Make sure to reset the parameters
         self.reset_parameters()
@@ -237,7 +254,7 @@ class cnn2dModel(torch.nn.Module):
         # Start a module list, build the block, and return it
         block = torch.nn.ModuleList()
         for i in range(self.convolutions):
-            block.append(torch.nn.Conv2d(chan_in, chan_out, 3, stride=1, padding="same"))
+            block.append(torch.nn.Conv2d(chan_in, chan_out, self.k_size, stride=1, padding="same"))
             chan_in = chan_out
         return block
     
@@ -284,7 +301,11 @@ class cnn2dModel(torch.nn.Module):
             j = self.depth - i - 1
             
             # Unpool
-            x = self.tr_convs[i](x)
+            if self.knn_up:
+                size_ = 2 * x.shape[1,2];
+                x = F.interpolate(x, size_) # default mode="nearest"
+            else:
+                x = self.tr_convs[i](x)
             x = self.activation(x)
             
             # Concatenate
@@ -297,6 +318,10 @@ class cnn2dModel(torch.nn.Module):
         # Do the final convolution
         x = self.final_conv(x)
         
+        # Apply a threshold to the output
+        if self.threshold:
+            x = F.threshold(x, self.threshold, self.threshold)
+        
         # Return x
         return x
     
@@ -306,7 +331,7 @@ class cnn2dModel(torch.nn.Module):
         # Loop through the convolutions and apply them
         for conv in block:
             x = conv(x)
-            x = F.relu(x)
+            x = self.activation(x)
         return x
     
     # Function for returning the device the model is on
@@ -318,16 +343,22 @@ class cnn2dModel(torch.nn.Module):
 
 
 # Make a class for 3D cnn models
-class cnn3dModel(torch.nn.Module):
+class cnnModel3d(torch.nn.Module):
 
-    def __init__(self, channels_in, channels, convolutions, depth, loss_function):
-        super(cnn3dModel, self).__init__()
+    def __init__(self, res, depth, channels_in, channels, convolutions, loss_function, activation, threshold, k_size, last_1x1, knn_up):
+        super(cnnModel3d, self).__init__()
         self.type          = "cnn3d"
+        self.res           = res
+        self.depth         = depth
         self.channels_in   = channels_in
         self.channels      = channels
         self.convolutions  = convolutions
-        self.depth         = depth
         self.loss_function = loss_function
+        self.activation    = activation
+        self.threshold     = threshold
+        self.k_size        = k_size
+        self.last_1x1      = last_1x1
+        self.knn_up        = knn_up
         
         # Create initial convolutions
         chan_in  = channels_in
@@ -353,7 +384,10 @@ class cnn3dModel(torch.nn.Module):
         # Create the final convolutions
         chan_in  = channels
         chan_out = 1
-        self.final_conv = torch.nn.Conv3d(chan_in, chan_out, 1, stride=1, padding="same")
+        if self.last_1x1:
+            self.final_conv = torch.nn.Conv3d(chan_in, chan_out, 1, stride=1, padding="same")
+        else:
+            self.final_conv = torch.nn.Conv3d(chan_in, chan_out, self.k_size, stride=1, padding="same")
         
         # Make sure to reset the parameters
         self.reset_parameters()
@@ -364,7 +398,7 @@ class cnn3dModel(torch.nn.Module):
         # Start a module list, build the block, and return it
         block = torch.nn.ModuleList()
         for i in range(self.convolutions):
-            block.append(torch.nn.Conv3d(chan_in, chan_out, 3, stride=1, padding="same"))
+            block.append(torch.nn.Conv3d(chan_in, chan_out, self.k_size, stride=1, padding="same"))
             chan_in = chan_out
         return block
     
@@ -424,6 +458,10 @@ class cnn3dModel(torch.nn.Module):
         # Do the final convolution
         x = self.final_conv(x)
         
+        # Apply a threshold to the output
+        if self.threshold:
+            x = F.threshold(x, self.threshold, self.threshold)
+        
         # Return x
         return x
         
@@ -433,7 +471,7 @@ class cnn3dModel(torch.nn.Module):
         # Loop through the convolutions and apply them
         for conv in block:
             x = conv(x)
-            x = F.relu(x)
+            x = self.activation(x)
         return x
     
     # Function for returning the device the model is on
@@ -445,17 +483,19 @@ class cnn3dModel(torch.nn.Module):
 
 
 # Function for displaying a summary of a model
-def parameterSummary(model):    
-
+def parameterSummary(model):
+    
     # Print some info about the model
     printLine()
     print("        Device:", model.get_device())
     print("          Type:", model.type)
+    print("         Depth:", model.depth)
     print("   Channels In:", model.channels_in)
     print("      Channels:", model.channels)
     print("  Convolutions:", model.convolutions)
-    print("         Depth:", model.depth)
+    print("        ResNet:", model.res)
     print(" Loss Function:", model.loss_function)
+    print(" Last Conv 1x1:", model.last_1x1)
     
     # Keep track of the total number of parameters
     total_trainable_parameters = 0
@@ -472,3 +512,4 @@ def parameterSummary(model):
     printLine()
     print(tabulate(table, headers=["Tensor Name", "Shape", "Size"], tablefmt="plain"))
     print("Total Trainable Parameters: {}".format(total_trainable_parameters))
+

@@ -1,6 +1,5 @@
 # Functions for creating models
 
-import GN4IP
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -11,7 +10,7 @@ from GN4IP.utils.message import printLine
 
 
 # Build a model
-def buildModel(type="gnn", channels_in=1, channels=8, convolutions=1, depth=0, loss_function=GN4IP.utils.myMSELoss()):
+def buildModel(type, channels_in=1, channels=8, convolutions=1, depth=0, loss_function=torch.nn.MSELoss()):
 
     # Make a GNN
     if type == "gnn":
