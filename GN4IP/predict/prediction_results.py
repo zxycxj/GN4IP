@@ -7,11 +7,12 @@ class PredictionResults(object):
     
     def __init__(self, input, input_cnn=None):
         '''
-        GNN results should be initialized with predictions (and updates if it
-        is a model-based network). CNN results should be initialized with
-        predictions and predictions_cnn (and the updates if it is a model-
-        based network). Whatever isn't provided at initialization can be fixed
-        later too.
+        Results should be initialized with the input to the network in graph
+        format and, if it's a CNN, the pixel grid input can also be stored as
+        an input. Then the output of the networks are stored as predictions.
+        If the networks take two features as input (the second is an update),
+        then those inputs can be stored as the updates and updates_cnn 
+        attributes.
         '''
         self.input = input
         self.input_cnn = input_cnn

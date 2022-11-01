@@ -27,5 +27,3 @@ class TrainingParameters(object):
         print("# Learning Rate:", self.learning_rate)
         print("#         Scale:", self.scale)
         print("#    Max Epochs:", self.max_epochs)
-
-        

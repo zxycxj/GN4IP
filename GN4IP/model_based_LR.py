@@ -6,13 +6,13 @@ import GN4IP
 class ModelBased(GN4IP.LearnedReconstruction):
     '''
     A ModelBased object is a learned reconstruction object with specific train
-    and predict methods
+    and predict methods.
     '''
     
     def __init__(self, model_names, model=None):
         '''
         A PostProcess object is initialized the same as any 
-        LearnedReconstruction object
+        LearnedReconstruction object: with a list of model names.
         '''
         super().__init__(model_names, model)
     

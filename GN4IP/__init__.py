@@ -16,6 +16,7 @@ import GN4IP.train
 
 import GN4IP.predict
 # from .prediction_results import PredictionResults
+# from .prediction_parameters import PredictionParameters
 
 import GN4IP.models
 # from .build import buildModel, parameterSummary

@@ -115,7 +115,7 @@ class LearnedReconstruction(object):
         
         # Move back to cpu and save
         self.model = self.model.to("cpu")
-        torch.save(self.model, name)
+        torch.save(self.model.state_dict(), name)
         
         return results_tr
     
@@ -270,6 +270,12 @@ class LearnedReconstruction(object):
         object is returned either way.
         '''
         
+        # Assign self.Edges and self.Clusters to self.model as tensors if not None
+        if self.Edges is not None:
+            self.model.Edges    = [torch.as_tensor(e.astype(int)).squeeze().to(self.params_pr.device) for e in self.Edges[1:]]
+        if self.Clusters is not None:
+            self.model.Clusters = [torch.as_tensor(c.astype(int)).squeeze().to(self.params_pr.device) for c in self.Clusters ]
+        
         # Initialize results output with the network inputs
         results_pr = GN4IP.predict.PredictionResults(data_pr[0])
         
@@ -289,15 +295,15 @@ class LearnedReconstruction(object):
             x = torch.as_tensor(np.array(data_pr), dtype=torch.float64)
             x = torch.mul(x, self.params_pr.scale)
             
-            # Permute the input data [C,N,M] -> [N,C,M]
-            x = x.permute(1,0,2)
+            # Permute the input data [C,N,M] -> [N,M,C]
+            x = x.permute(1,2,0)
             
             # Make sure the edges are a tensor
             edges = torch.as_tensor(self.Edges[0].astype(int)).to(self.params_pr.device)
             
             # Loop through the samples and predict
             with torch.no_grad():
-                for i in range(x.size(1)):
+                for i in range(x.size(0)):
                     predictions[i,:] = self.model(x[i,:].to(self.params_pr.device), edges).squeeze().cpu()
             
             # There were no prediction results
@@ -333,5 +339,5 @@ class LearnedReconstruction(object):
             for name in self.model_names:
                 check.append(True)
         print(check)
-        print("Add an actual check to LM.checkNames()")
+        print("Add an actual check to LR.checkNames()")
         return check

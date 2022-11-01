@@ -6,16 +6,15 @@ import GN4IP
 class PostProcess(GN4IP.LearnedReconstruction):
     '''
     A PostProcess object is a learned reconstruction object with specific train
-    and predict methods
+    and predict methods.
     '''
     
     def __init__(self, model_names, model=None):
         '''
         A PostProcess object is initialized the same as any 
-        LearnedReconstruction object
+        LearnedReconstruction object: with a list of model names.
         '''
         super().__init__(model_names, model)
-
     
     def train(self, data_tr, data_va, params_tr, Edges=None, Clusters=None, OVERWRITE=False):
         '''
@@ -57,7 +56,7 @@ class PostProcess(GN4IP.LearnedReconstruction):
         self.Clusters = Clusters
         
         # Check if the model exists
-        PREDICT_MODELS = self.checkNames(OVERWRITE)
+        PREDICT_MODELS = self.checkNames(True)
         
         # If the models exist,
         if PREDICT_MODELS[0]:
