@@ -43,9 +43,9 @@ class ModelBased(GN4IP.LearnedReconstruction):
             
             # Compute second input term using the update function
             if data_tr[1] is None:
-                data_tr[1] = self.params_tr.updateFunction(data_tr[0], self.params_tr.fwd_data)
+                data_tr[1] = self.params_tr.updateFunction(data_tr[0], self.params_tr.fwd_data_file)
             if data_va[1] is None:
-                data_va[1] = self.params_tr.updateFunction(data_va[0], self.params_tr.fwd_data)
+                data_va[1] = self.params_tr.updateFunction(data_va[0], self.params_tr.fwd_data_file)
             
             # If the model should be trained and saved
             if TRAIN_MODELS[i]:
@@ -59,8 +59,8 @@ class ModelBased(GN4IP.LearnedReconstruction):
                 self.results_tr.appendResults(results_tr)
             
             # Use the model to compute the next iterates
-            data_tr[0] = self.predictModel(data_tr[0:-1]).predictions
-            data_va[0] = self.predictModel(data_va[0:-1]).predictions
+            data_tr[0] = self.predictModel(data_tr[0:-1]).predictions[0]
+            data_va[0] = self.predictModel(data_va[0:-1]).predictions[0]
             data_tr[1] = None
             data_va[1] = None
     
@@ -82,17 +82,17 @@ class ModelBased(GN4IP.LearnedReconstruction):
             self.model = GN4IP.models.build()
         
         # Check which models will be/can be loaded
-        self.checkNames(None)
+        #self.checkNames(None)
         
         # Initialize the prediction results
-        self.results_pr = GN4IP.predictions.PredictionResults(data_pr[0], data_pr[1])
+        self.results_pr = GN4IP.predict.PredictionResults(data_pr[0], data_pr[1])
         
         # For each name in model_names
         for name in self.model_names:
             
             # Make sure the data is all there
             if data_pr[1] is None:
-                data_pr[1] = self.params_pr.updateFunction(data_pr[0], self.params_pr.fwd_data)
+                data_pr[1] = self.params_pr.updateFunction(data_pr[0], self.params_pr.fwd_data_file)
             
             # Load the model parameters
             self.model.load_state_dict(torch.load(name))

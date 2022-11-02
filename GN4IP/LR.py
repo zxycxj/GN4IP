@@ -114,8 +114,11 @@ class LearnedReconstruction(object):
             results_tr.stop_model = None
         
         # Move back to cpu and save
+        GN4IP.utils.printLine()
         self.model = self.model.to("cpu")
         torch.save(self.model.state_dict(), name)
+        print("#  Saved model as:", name)
+        GN4IP.utils.printLine()
         
         return results_tr
     
@@ -306,7 +309,8 @@ class LearnedReconstruction(object):
                 for i in range(x.size(0)):
                     predictions[i,:] = self.model(x[i,:].to(self.params_pr.device), edges).squeeze().cpu()
             
-            # There were no prediction results
+            # Make sure prediction arrays are numpy
+            predictions = predictions.numpy()
             predictions_cnn = None
         
         else:

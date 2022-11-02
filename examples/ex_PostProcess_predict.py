@@ -48,3 +48,9 @@ unet1.predict(
 )
 print(vars(unet1.results_pr))
 print("Done Predicting!")
+
+
+# Save the prediction results
+prediction_dir = "/mmfs1/home/4106herzbew/thesis/on_github/GN4IP/network_outputs/"
+results_pr_name = prediction_dir + "PostProcess_test1_Chest15.mat"
+unet1.results_pr.save(results_pr_name)
