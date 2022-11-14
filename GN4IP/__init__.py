@@ -8,6 +8,7 @@ import GN4IP.utils
 # from .message import printLine, timeMessage
 # from .load import loadDataset
 # from .losses import myMSELoss, myL1Loss, mySmoothL1Loss
+# from .interpolate import interpolator
 
 import GN4IP.train
 # from .training_results import TrainingResults
@@ -20,16 +21,3 @@ import GN4IP.predict
 
 import GN4IP.models
 # from .build import buildModel, parameterSummary
-
-
-
-# import GN4IP.utils
-# GN4IP.utils.printLine()
-# GN4IP.utils.timeMessage()
-
-
-# import GN4IP.experiment
-
-# import GN4IP.train
-# import GN4IP.predict
-# import GN4IP.matlab
