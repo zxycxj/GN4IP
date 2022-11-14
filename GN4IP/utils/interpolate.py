@@ -46,24 +46,24 @@ class interpolator(object):
         '''
         # Get the grid points in 1D
         x = np.linspace(-1, 1, self.grid_size, endpoint=False)
-        x = x + (x[1]-xx[0]) / 2
+        x = x + (x[1]-x[0]) / 2
 
         # Make the grid in 2D
-        if dim == 2:
+        if self.dim == 2:
             x_grid, y_grid = np.meshgrid(x, x)
             x_grid = x_grid.flatten()
             y_grid = y_grid.flatten()
             self.grid_points = np.stack((x_grid, y_grid), 0)
 
         # Make the grid in 3D
-        elif dim == 3:
+        elif self.dim == 3:
             x_grid, y_grid, z_grid = np.meshgrid(x, x, x)
             x_grid = x_grid.flatten()
             y_grid = y_grid.flatten()
             z_grid = z_grid.flatten()
             self.grid_points = np.stack((x_grid, y_grid, z_grid), 0)
 
-    def findNearestPoints(points_in, points_out):
+    def findNearestPoints(self, points_in, points_out):
         '''Find the inds of the points_in that are closest to the points_out. 
         The output is a np.array of the same length as points_out where the 
         maximum value is the length of points_in.
@@ -83,7 +83,7 @@ class interpolator(object):
         # Return the indicies for the minimum distances
         return np.argmin(d, 1)
     
-    def interpMesh2Grid(data_mesh):
+    def interpMesh2Grid(self, mesh_data):
         '''Interpolate the data from the mesh_points to the grid_points. Use 
         the self.inds_mesh2grid if already computed, otherwise compute those
         first.
@@ -96,28 +96,28 @@ class interpolator(object):
         if self.dim == 2:
             
             # Initialize output array
-            data_grid = np.zeros((data_mesh.shape[0], data_mesh.shape[1], self.grid_size, self.grid_size))
+            grid_data = np.zeros((mesh_data.shape[0], mesh_data.shape[1], self.grid_size, self.grid_size))
             
             # Loop through data and do interpolation
-            for i in range(data_mesh.shape[0]):
-                for j in range(data_mesh.shape[1]):
-                    data_grid[i,j,:,:] = np.reshape(data_mesh[i,j,self.inds_mesh2grid], (self.grid_size, self.grid_size))
+            for i in range(mesh_data.shape[0]):
+                for j in range(mesh_data.shape[1]):
+                    grid_data[i,j,:,:] = np.reshape(mesh_data[i,j,self.inds_mesh2grid], (self.grid_size, self.grid_size))
         
         # If output is 3D
         elif self.dim == 3:
             
             # Initialize output array
-            data_grid = np.zeros((data_mesh.shape[0], data_mesh.shape[1], self.grid_size, self.grid_size, self.grid_size))
+            grid_data = np.zeros((mesh_data.shape[0], mesh_data.shape[1], self.grid_size, self.grid_size, self.grid_size))
             
             # Loop through data and do interpolation
-            for i in range(data_mesh.shape[0]):
-                for j in range(data_mesh.shape[1]):
-                    data_grid[i,j,:,:] = np.reshape(data_mesh[i,j,self.inds_mesh2grid], (self.grid_size, self.grid_size, self.grid_size))
+            for i in range(mesh_data.shape[0]):
+                for j in range(mesh_data.shape[1]):
+                    grid_data[i,j,:,:] = np.reshape(mesh_data[i,j,self.inds_mesh2grid], (self.grid_size, self.grid_size, self.grid_size))
         
         # Return the output data
-        return data_grid
+        return grid_data
     
-    def interpGrid2Mesh(data_mesh):
+    def interpGrid2Mesh(self, grid_data):
         '''Interpolate the data from the grid_points to the mesh_points. Use
         the self.inds_grid2mesh if already computed, otherwise compute those
         first.
@@ -126,14 +126,14 @@ class interpolator(object):
             self.inds_grid2mesh = self.findNearestPoints(self.grid_points, self.mesh_points)
         
         # Initialize the output data
-        data_mesh = np.zeros((data_grid.shape[0], data_grid.shape[1], self.mesh_points.shape[1]))
+        mesh_data = np.zeros((grid_data.shape[0], grid_data.shape[1], self.mesh_points.shape[1]))
         
         # Loop through data and do interpolation
-        for i in range(data_grid.shape[0]):
-            for j in range(data_mesh.shape[1]):
-                data_mesh_ij = data_grid[i,j,:].flatten()
-                data_mesh[i,j,:] = data_mesh_ij[self.inds_grid2mesh]
+        for i in range(grid_data.shape[0]):
+            for j in range(grid_data.shape[1]):
+                mesh_data_ij = grid_data[i,j,:].flatten()
+                mesh_data[i,j,:] = mesh_data_ij[self.inds_grid2mesh]
         
         # Return the output data
-        return data_mesh
+        return mesh_data
     
