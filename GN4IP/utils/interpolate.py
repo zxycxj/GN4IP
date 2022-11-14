@@ -12,12 +12,31 @@ class interpolator(object):
         Immediately make the grid points using the dimension of the mesh_points
         to determine the dimension of the grid
         '''
-        self.mesh_points = mesh_points
+        self.mesh_points = self.scalePoints(mesh_points)
         self.grid_size = grid_size
         self.dim = mesh_points.shape[0]
         self.makeGridPoints()
         self.inds_mesh2grid = None
         self.inds_grid2mesh = None
+    
+    def scalePoints(self, points):
+        '''Scale the points so that they fit in [-1,1] in each dimension.
+        Scale each dimension by the same factor though.
+        '''
+        # Move so minimum dimension is 0
+        points = points - points.min(1, keepdims=True)
+        
+        # Find the maximum
+        max_length = points.max()
+        
+        # Divide all dimensions by half the max
+        points = points / (max_length/2)
+        
+        # Subtract half the max in each dimension to center at [0,0]
+        points = points - (points.max(1, keepdims=True) / 2)
+        
+        # Return these points
+        return points
         
     def makeGridPoints(self):
         '''Make the grid points using the dimension and grid_size in self. The
