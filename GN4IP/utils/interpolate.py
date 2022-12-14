@@ -12,6 +12,7 @@ class interpolator(object):
         Immediately make the grid points using the dimension of the mesh_points
         to determine the dimension of the grid
         '''
+        
         self.mesh_points = self.scalePoints(mesh_points)
         self.grid_size = grid_size
         self.dim = mesh_points.shape[0]
@@ -23,6 +24,7 @@ class interpolator(object):
         '''Scale the points so that they fit in [-1,1] in each dimension.
         Scale each dimension by the same factor though.
         '''
+        
         # Move so minimum dimension is 0
         points = points - points.min(1, keepdims=True)
         
@@ -44,6 +46,7 @@ class interpolator(object):
         size is 4, the points will be at [-0.75, -0.25, 0.25, 0.75]. Flatten 
         the points into a [dim, grid_size^dim] np.array and store in self.
         '''
+        
         # Get the grid points in 1D
         x = np.linspace(-1, 1, self.grid_size, endpoint=False)
         x = x + (x[1]-x[0]) / 2
@@ -68,6 +71,7 @@ class interpolator(object):
         The output is a np.array of the same length as points_out where the 
         maximum value is the length of points_in.
         '''
+        
         # How many points in and out
         n_in = points_in.shape[1]
         n_out = points_out.shape[1]
@@ -88,8 +92,9 @@ class interpolator(object):
         the self.inds_mesh2grid if already computed, otherwise compute those
         first.
         '''
+        
         # Compute the indicies
-        if not self.inds_mesh2grid:
+        if self.inds_mesh2grid is None:
             self.inds_mesh2grid = self.findNearestPoints(self.mesh_points, self.grid_points)
 
         # If output is 2D
@@ -122,7 +127,9 @@ class interpolator(object):
         the self.inds_grid2mesh if already computed, otherwise compute those
         first.
         '''
-        if not self.inds_grid2mesh:
+        
+        # Compute the indicies
+        if self.inds_grid2mesh is None:
             self.inds_grid2mesh = self.findNearestPoints(self.grid_points, self.mesh_points)
         
         # Initialize the output data
