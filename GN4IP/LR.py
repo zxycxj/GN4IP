@@ -124,12 +124,26 @@ class LearnedReconstruction(object):
     
     def makeLoader(self, data):
         '''
-        Create a loader for the data (typically training or validation data). 
-        The data is passed as graph data where data[0:-1] is a list of [N by M]
-        np.arrays describing the input features and data[-1] is an [N by M] 
-        np.array containing the ground truth. Loaders are only needed during
-        training so they use self.params_tr.
+        Create a loader for the data (typically training or validation data).
+        The data is passed as an np.array in the format of 
+        [[x1,...,xn,y], samples, nodes]. Use the self.params_tr.
         '''
+        
+        if self.model.type == "gnn":
+            loader = self.makeLoaderGNN(data)
+        
+        elif self.model.type == "cnn2d" or self.model.type == "cnn3d":
+            loader = self.makeLoaderCNN(data)
+        
+        return loader
+        
+    def makeLoaderGNN(self, data):
+        '''
+        Make a loader for a GNN.
+        '''
+        
+        # Make sure the edges are a tensor
+        edges = torch.as_tensor(self.Edges[0].astype(int))
         
         # Convert the data into tensors
         x = torch.as_tensor(np.array(data[0:-1]), dtype=torch.float64)
@@ -138,29 +152,6 @@ class LearnedReconstruction(object):
         # Scale the tensors
         x = torch.mul(x, self.params_tr.scale)
         y = torch.mul(y, self.params_tr.scale)
-        
-        # Make the loader for a GNN
-        if self.model.type == "gnn":
-            loader = self.makeLoaderGNN(x, y)
-        
-        # Make the loader for a CNN (2d)
-        elif self.model.type == "cnn2d":
-            loader = self.makeLoaderCNN2d(x, y)
-        
-        # Make the loader for a CNN (3d)
-        elif self.model.type == "cnn3d":
-            loader = self.makeLoaderCNN3d(x, y)
-        
-        # Return the loader
-        return loader
-    
-    def makeLoaderGNN(self, x, y):
-        '''
-        Finish the loader for GNN data
-        '''
-        
-        # Make sure the edges are a tensor
-        edges = torch.as_tensor(self.Edges[0].astype(int))
         
         # Permute the order of axes to get [samples, nodes, features]
         x = x.permute(1,2,0)
@@ -172,21 +163,27 @@ class LearnedReconstruction(object):
         
         # Prepare loader and return
         loader = DataLoader(dataset, batch_size=self.params_tr.batch_size, shuffle=True)
+        
         return loader
     
-    # Finish making the (2D) CNN Loader
-    def makeLoaderCNN2d(self, x, y):
+    def makeLoaderCNN(self, data):
         '''
-        Finish the loader for (2D) CNN data
+        Make a loader for a CNN. Input data is on a graph so use the 
+        self.params_tr.interpolator to move to a grid.
         '''
-        return 1
-    
-    # Finish making the (3D) CNN Loader  
-    def makeLoaderCNN3d(self, x, y):
-        '''
-        Finish the loader for (3D) CNN data
-        '''
-        return 1
+        
+        # Use the interpolator (need data in [samples, features, nodes])
+        mesh_data = np.array(data).transpose(1,0,2)
+        grid_data = self.params_tr.interpolator.interpMesh2Grid(mesh_data)
+        
+        # Convert the grid_data into tensor and scale
+        grid_data = torch.as_tensor(grid_data, dtype=torch.float64)
+        grid_data = torch.mul(grid_data, self.params_tr.scale)
+        
+        # Make a dataset and a loader and return
+        dataset = torch.utils.data.TensorDataset(grid_data[:,0:-1,:], grid_data[:,-1:,:])
+        loader = DataLoader(dataset, batch_size=self.params_tr.batch_size, shuffle=True)
+        return loader
     
     def trainEpoch(self):
         '''
